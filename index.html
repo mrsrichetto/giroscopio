@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giroscópio do Celular</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a1a;
+    color: #e0e0ff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+  }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #a0c4ff; margin-bottom: 4px; text-align: center; }
+  .subtitle { font-size: 0.82rem; color: #7080a0; text-align: center; margin-bottom: 20px; }
+
+  #debugBox {
+    width: 100%; max-width: 480px;
+    background: #0d1020;
+    border: 1px solid #ff6060;
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 0.78rem;
+    line-height: 1.9;
+    color: #c0c8e0;
+  }
+  #debugBox h3 { color: #ff9090; font-size: 0.82rem; margin-bottom: 6px; }
+  .ok  { color: #60ff80; }
+  .err { color: #ff6060; }
+  .warn { color: #ffcc60; }
+
+  .btn {
+    background: #3050cc; color: #fff; border: none;
+    border-radius: 10px; padding: 11px 24px;
+    font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+    display: block; width: 100%; max-width: 480px;
+    margin-bottom: 10px;
+  }
+  .btn:hover { background: #4060ee; }
+  .btn.sec { background: #151830; border: 1px solid #3050aa; font-size: 0.82rem; padding: 8px 20px; }
+
+  .main-content { display: none; width: 100%; max-width: 480px; }
+  .main-content.visible { display: block; }
+
+  .cube-wrapper { display: flex; justify-content: center; align-items: center; height: 200px; margin-bottom: 20px; }
+  .scene { width: 120px; height: 120px; perspective: 400px; }
+  .cube { width: 120px; height: 120px; position: relative; transform-style: preserve-3d; transition: transform 0.05s linear; }
+  .face { position: absolute; width: 120px; height: 120px; border: 2px solid #3a5aff; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; opacity: 0.85; border-radius: 8px; }
+  .front  { background: rgba(30,60,200,0.3);  transform: rotateY(0deg)   translateZ(60px); color: #80aaff; }
+  .back   { background: rgba(200,30,120,0.3); transform: rotateY(180deg) translateZ(60px); color: #ff80cc; }
+  .left   { background: rgba(30,180,120,0.3); transform: rotateY(-90deg) translateZ(60px); color: #80ffd0; }
+  .right  { background: rgba(200,150,30,0.3); transform: rotateY(90deg)  translateZ(60px); color: #ffd080; }
+  .top    { background: rgba(200,30,30,0.3);  transform: rotateX(90deg)  translateZ(60px); color: #ff8080; }
+  .bottom { background: rgba(100,30,200,0.3); transform: rotateX(-90deg) translateZ(60px); color: #c080ff; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .card { background: #12122a; border: 1px solid #2a3060; border-radius: 12px; padding: 12px 8px; text-align: center; }
+  .card .axis { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; }
+  .card .value { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .card .unit { font-size: 0.68rem; color: #5060a0; margin-top: 2px; }
+  .x .axis { color: #ff6060; } .x .value { color: #ff8080; }
+  .y .axis { color: #60ff60; } .y .value { color: #80ff80; }
+  .z .axis { color: #6080ff; } .z .value { color: #80a0ff; }
+
+  .bar-section { background: #12122a; border: 1px solid #2a3060; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .bar-row { display: flex; align-items: center; margin-bottom: 9px; gap: 10px; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; width: 20px; text-align: center; }
+  .bar-track { flex: 1; height: 13px; background: #1a1a3a; border-radius: 7px; overflow: hidden; position: relative; }
+  .bar-fill { position: absolute; top: 0; height: 100%; border-radius: 7px; transition: width 0.05s, left 0.05s; }
+  .bar-val { font-size: 0.78rem; font-variant-numeric: tabular-nums; width: 60px; text-align: right; color: #8090b0; }
+  .bx .bar-label { color: #ff6060; } .bx .bar-fill { background: #ff6060; }
+  .by .bar-label { color: #60ff60; } .by .bar-fill { background: #60ff60; }
+  .bz .bar-label { color: #6080ff; } .bz .bar-fill { background: #6080ff; }
+
+  .history-section { background: #12122a; border: 1px solid #2a3060; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .history-title { font-size: 0.72rem; color: #5060a0; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+  canvas#graph { width: 100%; height: 80px; display: block; }
+  .status { font-size: 0.78rem; color: #5060a0; text-align: center; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>🎯 Giroscópio do Celular</h1>
+<p class="subtitle">Visualizador em tempo real — iOS &amp; Android</p>
+
+<div id="debugBox">
+  <h3>🔍 Diagnóstico do dispositivo</h3>
+  <div id="debugLines">Verificando...</div>
+</div>
+
+<button class="btn" id="startBtn" onclick="iniciar()">▶ Ativar Giroscópio</button>
+<button class="btn sec" id="simBtn" style="display:none" onclick="simularDados()">🔄 Usar simulação em vez disso</button>
+
+<div class="main-content" id="mainContent">
+  <div class="cube-wrapper">
+    <div class="scene">
+      <div class="cube" id="cube">
+        <div class="face front">F</div>
+        <div class="face back">T</div>
+        <div class="face left">E</div>
+        <div class="face right">D</div>
+        <div class="face top">C</div>
+        <div class="face bottom">B</div>
+      </div>
+    </div>
+  </div>
+  <div class="cards">
+    <div class="card x"><div class="axis">EIXO X</div><div class="value" id="vx">0.0</div><div class="unit">°/s</div></div>
+    <div class="card y"><div class="axis">EIXO Y</div><div class="value" id="vy">0.0</div><div class="unit">°/s</div></div>
+    <div class="card z"><div class="axis">EIXO Z</div><div class="value" id="vz">0.0</div><div class="unit">°/s</div></div>
+  </div>
+  <div class="bar-section">
+    <div class="bar-row bx"><span class="bar-label">X</span><div class="bar-track"><div class="bar-fill" id="bfx"></div></div><span class="bar-val" id="bvx">0.0</span></div>
+    <div class="bar-row by"><span class="bar-label">Y</span><div class="bar-track"><div class="bar-fill" id="bfy"></div></div><span class="bar-val" id="bvy">0.0</span></div>
+    <div class="bar-row bz"><span class="bar-label">Z</span><div class="bar-track"><div class="bar-fill" id="bfz"></div></div><span class="bar-val" id="bvz">0.0</span></div>
+  </div>
+  <div class="history-section">
+    <div class="history-title">Histórico — últimos 3 segundos</div>
+    <canvas id="graph" width="440" height="80"></canvas>
+  </div>
+  <p class="status" id="statusMsg">Aguardando dados...</p>
+</div>
+
+<script>
+let rx = 0, ry = 0, rz = 0;
+const MAX_VAL = 360;
+const HISTORY_LEN = 90;
+let hx = Array(HISTORY_LEN).fill(0);
+let hy = Array(HISTORY_LEN).fill(0);
+let hz = Array(HISTORY_LEN).fill(0);
+let eventCount = 0;
+
+function log(html) {
+  document.getElementById('debugLines').innerHTML += '<div>' + html + '</div>';
+}
+
+window.addEventListener('load', () => {
+  document.getElementById('debugLines').innerHTML = '';
+
+  const isHttps = location.protocol === 'https:';
+  const isFile  = location.protocol === 'file:';
+  log('Protocolo: <b>' + location.protocol + '</b> ' +
+    (isHttps ? '<span class="ok">✓ ok</span>' :
+     isFile  ? '<span class="err">✗ arquivo local — sensores BLOQUEADOS no Android Chrome</span>' :
+               '<span class="warn">⚠ http — pode bloquear sensores</span>'));
+
+  log('DeviceMotionEvent: ' +
+    (typeof DeviceMotionEvent !== 'undefined'
+      ? '<span class="ok">✓ suportado</span>'
+      : '<span class="err">✗ não encontrado</span>'));
+
+  log('DeviceOrientationEvent: ' +
+    (typeof DeviceOrientationEvent !== 'undefined'
+      ? '<span class="ok">✓ suportado</span>'
+      : '<span class="err">✗ não encontrado</span>'));
+
+  const needsPermission = typeof DeviceMotionEvent !== 'undefined' &&
+                          typeof DeviceMotionEvent.requestPermission === 'function';
+  log('Permissão obrigatória (iOS): ' +
+    (needsPermission ? '<span class="warn">⚠ sim</span>' : '<span class="ok">✓ não</span>'));
+
+  if (isFile || !isHttps) {
+    log('<span class="warn">💡 Dica: hospede o arquivo em HTTPS para o Android liberar os sensores. Tente <b>GitHub Pages</b> ou <b>Netlify Drop</b>.</span>');
+  }
+
+  document.getElementById('simBtn').style.display = 'block';
+});
+
+function iniciar() {
+  if (typeof DeviceMotionEvent !== 'undefined' &&
+      typeof DeviceMotionEvent.requestPermission === 'function') {
+    DeviceMotionEvent.requestPermission()
+      .then(r => {
+        if (r === 'granted') registrar();
+        else log('<span class="err">✗ Permissão negada.</span>');
+      })
+      .catch(e => log('<span class="err">✗ Erro: ' + e.message + '</span>'));
+  } else {
+    registrar();
+  }
+}
+
+function registrar() {
+  mostrarPainel();
+
+  // API 1: devicemotion → rotationRate (giroscópio real)
+  window.addEventListener('devicemotion', (e) => {
+    const g = e.rotationRate;
+    if (!g) return;
+    const ax = g.alpha || 0, ay = g.beta || 0, az = g.gamma || 0;
+    if (ax === 0 && ay === 0 && az === 0) return;
+    eventCount++;
+    rx += ax * 0.016; ry += ay * 0.016; rz += az * 0.016;
+    atualizar(ax, ay, az);
+    if (eventCount === 1) log('<span class="ok">✓ devicemotion OK! Giroscópio ativo.</span>');
+  }, true);
+
+  // API 2: deviceorientation → fallback (acelerômetro + magnetômetro)
+  let lastO = null, lastT = null;
+  window.addEventListener('deviceorientation', (e) => {
+    if (eventCount > 0) return; // já tem motion
+    const now = Date.now();
+    if (lastO && lastT) {
+      const dt = (now - lastT) / 1000;
+      if (dt > 0 && dt < 0.5) {
+        const da = wrapDelta(e.alpha - lastO.alpha) / dt;
+        const db = (e.beta  - lastO.beta)  / dt;
+        const dg = (e.gamma - lastO.gamma) / dt;
+        atualizar(da, db, dg);
+        if (!window._orOK) { log('<span class="warn">⚠ devicemotion sem dados. Usando deviceorientation como fallback.</span>'); window._orOK = true; }
+      }
+    }
+    lastO = { alpha: e.alpha, beta: e.beta, gamma: e.gamma };
+    lastT = now;
+  }, true);
+
+  setTimeout(() => {
+    if (eventCount === 0 && !window._orOK) {
+      log('<span class="err">✗ Nenhum dado após 2s. Verifique: 1) abra via HTTPS, 2) no Chrome vá em Configurações › Privacidade › Configurações do site › Sensores de movimento.</span>');
+      document.getElementById('simBtn').style.display = 'block';
+    }
+  }, 2000);
+}
+
+function wrapDelta(d) {
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+
+function simularDados() {
+  mostrarPainel();
+  let t = 0;
+  setInterval(() => {
+    t += 0.05;
+    const a = Math.sin(t * 1.3) * 60;
+    const b = Math.cos(t * 0.8) * 45;
+    const g = Math.sin(t * 0.5) * 30;
+    rx += a * 0.016; ry += b * 0.016; rz += g * 0.016;
+    atualizar(a, b, g);
+  }, 50);
+  document.getElementById('statusMsg').textContent = '🔄 Modo simulação ativo';
+}
+
+function mostrarPainel() {
+  document.getElementById('startBtn').style.display = 'none';
+  document.getElementById('simBtn').style.display = 'none';
+  document.getElementById('mainContent').classList.add('visible');
+}
+
+function atualizar(ax, ay, az) {
+  document.getElementById('vx').textContent = ax.toFixed(1);
+  document.getElementById('vy').textContent = ay.toFixed(1);
+  document.getElementById('vz').textContent = az.toFixed(1);
+  atualizarBarra('bfx', 'bvx', ax);
+  atualizarBarra('bfy', 'bvy', ay);
+  atualizarBarra('bfz', 'bvz', az);
+  document.getElementById('cube').style.transform =
+    `rotateX(${ry}deg) rotateY(${rx}deg) rotateZ(${rz}deg)`;
+  hx.push(ax); hx.shift();
+  hy.push(ay); hy.shift();
+  hz.push(az); hz.shift();
+  desenharGrafico();
+}
+
+function atualizarBarra(fillId, valId, val) {
+  const pct = Math.min(Math.abs(val) / MAX_VAL * 100, 100);
+  const el = document.getElementById(fillId);
+  if (val >= 0) { el.style.left = '50%'; el.style.width = (pct / 2) + '%'; }
+  else { el.style.width = (pct / 2) + '%'; el.style.left = (50 - pct / 2) + '%'; }
+  document.getElementById(valId).textContent = val.toFixed(1);
+}
+
+function desenharGrafico() {
+  const canvas = document.getElementById('graph');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = '#2a3060'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+  [[hx,'#ff6060'],[hy,'#60ff60'],[hz,'#6080ff']].forEach(([d,c]) => {
+    ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.beginPath();
+    d.forEach((v,i) => {
+      const x = (i/(HISTORY_LEN-1))*w, y = h/2-(v/MAX_VAL)*(h/2)*0.9;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  });
+}
+</script>
+</body>
+</html>
